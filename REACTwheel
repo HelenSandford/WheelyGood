@@ -6,10 +6,12 @@ interface BubbleData {
   angle: number;
   distance: number;
   color: string;
+  outlined?: boolean;
 }
 
 const ColorWheelInfographic: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [innerSections, setInnerSections] = useState([
     { id: "1", text: "Category 1", color: "#FFB3BA" },
@@ -85,35 +87,17 @@ const ColorWheelInfographic: React.FC = () => {
   const getColorWheelColor = (angle: number): string => {
     // Shifted 40 degrees clockwise total (20 + 20)
     let hue = (angle - 40 + 360) % 360;
-    let saturation = 85;
-    let lightness = 55;
-
-    if (hue >= 0 && hue < 30) {
-      saturation = 90;
-      lightness = 50;
-    } else if (hue >= 30 && hue < 60) {
-      saturation = 95;
-      lightness = 55;
-    } else if (hue >= 60 && hue < 90) {
-      saturation = 90;
-      lightness = 60;
-    } else if (hue >= 90 && hue < 150) {
-      saturation = 80;
-      lightness = 50;
-    } else if (hue >= 150 && hue < 210) {
-      saturation = 75;
-      lightness = 45;
-    } else if (hue >= 210 && hue < 270) {
-      saturation = 70;
-      lightness = 50;
-    } else if (hue >= 270 && hue < 330) {
-      saturation = 80;
-      lightness = 55;
-    } else {
-      saturation = 85;
-      lightness = 52;
-    }
-
+    
+    // Use smooth continuous functions instead of hard boundaries
+    // Base values
+    let saturation = 80;
+    let lightness = 52;
+    
+    // Smooth sine-based variations for natural transitions
+    const cycle = (hue / 360) * Math.PI * 2;
+    saturation = 78 + Math.sin(cycle * 3) * 8; // Oscillates between 70-86
+    lightness = 52 + Math.sin(cycle * 2 + Math.PI / 4) * 6; // Oscillates between 46-58
+    
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
   };
 
@@ -126,33 +110,34 @@ const ColorWheelInfographic: React.FC = () => {
 
   const getVibrantColorWheelColor = (angle: number): string => {
     let hue = (angle - 40 + 360) % 360;
-    let saturation = 85;
-    let lightness = 55;
+    // More muted/greyer colors for center wheel
+    let saturation = 35;
+    let lightness = 65;
 
     if (hue >= 0 && hue < 30) {
-      saturation = 90;
-      lightness = 50;
+      saturation = 40;
+      lightness = 63;
     } else if (hue >= 30 && hue < 60) {
-      saturation = 95;
-      lightness = 55;
+      saturation = 42;
+      lightness = 65;
     } else if (hue >= 60 && hue < 90) {
-      saturation = 90;
-      lightness = 60;
+      saturation = 38;
+      lightness = 67;
     } else if (hue >= 90 && hue < 150) {
-      saturation = 80;
-      lightness = 50;
+      saturation = 32;
+      lightness = 65;
     } else if (hue >= 150 && hue < 210) {
-      saturation = 75;
-      lightness = 45;
+      saturation = 30;
+      lightness = 62;
     } else if (hue >= 210 && hue < 270) {
-      saturation = 70;
-      lightness = 50;
+      saturation = 33;
+      lightness = 65;
     } else if (hue >= 270 && hue < 330) {
-      saturation = 80;
-      lightness = 55;
+      saturation = 36;
+      lightness = 66;
     } else {
-      saturation = 85;
-      lightness = 52;
+      saturation = 38;
+      lightness = 64;
     }
 
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
@@ -207,31 +192,43 @@ const ColorWheelInfographic: React.FC = () => {
     return { angle, distance };
   };
 
-  // Wrap text to max 20 characters per line
+  // Wrap text to max 20 characters per line, respecting carriage returns
   const wrapText = (text: string, maxChars: number = 20): string[] => {
-    const words = text.split(' ');
+    // First split by carriage returns/newlines
+    const paragraphs = text.split(/\r?\n/);
     const lines: string[] = [];
-    let currentLine = '';
 
-    for (const word of words) {
-      const testLine = currentLine ? `${currentLine} ${word}` : word;
-      if (testLine.length <= maxChars) {
-        currentLine = testLine;
-      } else {
-        if (currentLine) {
-          lines.push(currentLine);
+    // Then wrap each paragraph
+    for (const paragraph of paragraphs) {
+      if (paragraph.trim() === '') {
+        // Preserve empty lines
+        lines.push('');
+        continue;
+      }
+
+      const words = paragraph.split(' ');
+      let currentLine = '';
+
+      for (const word of words) {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        if (testLine.length <= maxChars) {
+          currentLine = testLine;
+        } else {
+          if (currentLine) {
+            lines.push(currentLine);
+          }
+          currentLine = word;
         }
-        currentLine = word;
+      }
+      if (currentLine) {
+        lines.push(currentLine);
       }
     }
-    if (currentLine) {
-      lines.push(currentLine);
-    }
 
-    return lines;
+    return lines.length > 0 ? lines : [''];
   };
 
-  const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
+  const handleSvgDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
     if (draggingBubbleId) return;
     
     const svg = e.currentTarget;
@@ -319,6 +316,14 @@ const ColorWheelInfographic: React.FC = () => {
     }
   };
 
+  const toggleBubbleOutline = () => {
+    if (selectedBubbleId) {
+      setBubbles(bubbles.map(b =>
+        b.id === selectedBubbleId ? { ...b, outlined: !b.outlined } : b
+      ));
+    }
+  };
+
   const updateLabelText = () => {
     if (selectedLabelId && editText.trim()) {
       setOuterLabels(outerLabels.map(l =>
@@ -395,41 +400,161 @@ const ColorWheelInfographic: React.FC = () => {
   const exportToPng = async () => {
     if (!svgRef.current) return;
 
-    const svgElement = svgRef.current;
+    try {
+      // Clone and prepare SVG
+      const svgElement = svgRef.current.cloneNode(true) as SVGSVGElement;
+      svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      
+      // Get SVG string
+      const svgString = new XMLSerializer().serializeToString(svgElement);
+      
+      // Create a data URL
+      const svgDataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+      
+      // Create canvas
+      const canvas = document.createElement("canvas");
+      canvas.width = 800;
+      canvas.height = 800;
+      const ctx = canvas.getContext("2d");
+      
+      if (!ctx) {
+        alert("Failed to create canvas context");
+        return;
+      }
+
+      // Create image
+      const img = new Image();
+      
+      img.onload = () => {
+        // Draw background
+        ctx.fillStyle = "#f9fafb";
+        ctx.fillRect(0, 0, 800, 800);
+        
+        // Draw image
+        ctx.drawImage(img, 0, 0, 800, 800);
+        
+        // Convert to PNG and download
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "color-wheel-infographic.png";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          } else {
+            alert("Failed to create PNG blob");
+          }
+        }, "image/png");
+      };
+
+      img.onerror = (e) => {
+        console.error("Error loading image:", e);
+        alert("PNG export failed. Try using 'Export as SVG' instead, then convert to PNG using an image editor.");
+      };
+
+      img.src = svgDataUrl;
+      
+    } catch (error) {
+      console.error("Export error:", error);
+      alert("PNG export failed. Try using 'Export as SVG' instead.");
+    }
+  };
+
+  const exportToSvg = () => {
+    if (!svgRef.current) return;
+
+    const svgElement = svgRef.current.cloneNode(true) as SVGSVGElement;
+    
+    // Add xmlns namespace if not present
+    svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    
     const svgData = new XMLSerializer().serializeToString(svgElement);
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
+    const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    
+    const downloadLink = document.createElement("a");
+    downloadLink.href = url;
+    downloadLink.download = "color-wheel-infographic.svg";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(url);
+  };
 
-    canvas.width = 800;
-    canvas.height = 800;
-
-    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-
-    img.onload = () => {
-      ctx?.drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const pngUrl = URL.createObjectURL(blob);
-          const downloadLink = document.createElement("a");
-          downloadLink.href = pngUrl;
-          downloadLink.download = "color-wheel-infographic.png";
-          document.body.appendChild(downloadLink);
-          downloadLink.click();
-          document.body.removeChild(downloadLink);
-          URL.revokeObjectURL(pngUrl);
-        }
-      });
+  // =====================================================
+  // SAVE PROJECT (download as file)
+  // =====================================================
+  const saveProjectToFile = () => {
+    const data = {
+      innerSections,
+      middleSections,
+      bubbles,
+      outerLabels,
+      nextBubbleId,
     };
 
-    img.src = url;
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    
+    const downloadLink = document.createElement("a");
+    downloadLink.href = url;
+    downloadLink.download = "color-wheel-project.json";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(url);
+  };
+
+  // =====================================================
+  // LOAD PROJECT (upload file)
+  // =====================================================
+  const loadProjectFromFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const jsonString = event.target?.result as string;
+        const data = JSON.parse(jsonString);
+
+        setInnerSections(data.innerSections || innerSections);
+        setMiddleSections(data.middleSections || middleSections);
+        setBubbles(data.bubbles || []);
+        setOuterLabels(data.outerLabels || outerLabels);
+        setNextBubbleId(data.nextBubbleId || nextBubbleId);
+
+        alert("Project loaded successfully!");
+      } catch (error) {
+        alert("Error loading project file. Please make sure it's a valid project file.");
+        console.error("Error parsing project file:", error);
+      }
+    };
+    reader.readAsText(file);
+    
+    // Reset the input so the same file can be loaded again if needed
+    e.target.value = "";
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center bg-gray-50 p-8 gap-8">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 p-8 gap-8">
+      {/* Hidden file input for loading projects */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        onChange={handleFileUpload}
+        style={{ display: "none" }}
+      />
+
       <div className="flex flex-col items-center">
         <h1 className="text-3xl mb-8">Color Wheel Infographic</h1>
 
@@ -438,9 +563,10 @@ const ColorWheelInfographic: React.FC = () => {
           width="800"
           height="800"
           viewBox="0 0 800 800"
+          xmlns="http://www.w3.org/2000/svg"
           className="max-w-full"
           style={{ cursor: draggingBubbleId ? "grabbing" : "crosshair" }}
-          onClick={handleSvgClick}
+          onDoubleClick={handleSvgDoubleClick}
           onMouseMove={handleSvgMouseMove}
           onMouseUp={handleSvgMouseUp}
           onMouseLeave={handleSvgMouseUp}
@@ -450,6 +576,19 @@ const ColorWheelInfographic: React.FC = () => {
               <stop offset="0%" stopColor="white" stopOpacity="0.3" />
               <stop offset="100%" stopColor="white" stopOpacity="0" />
             </radialGradient>
+
+            {/* Conical gradient for smooth color wheel */}
+            <defs>
+              <linearGradient id="colorWheelGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                {Array.from({ length: 36 }, (_, i) => {
+                  const angle = i * 10;
+                  const color = getColorWheelColor(angle);
+                  return (
+                    <stop key={i} offset={`${(i / 36) * 100}%`} stopColor={color} />
+                  );
+                })}
+              </linearGradient>
+            </defs>
 
             {outerLabels.map((label) => {
               const textRadius = (outerRingInnerRadius + outerRingOuterRadius) / 2;
@@ -492,7 +631,8 @@ const ColorWheelInfographic: React.FC = () => {
             })}
           </defs>
 
-          {Array.from({ length: 360 }, (_, i) => i).map((angle) => (
+          {/* Outer color ring - using 0.25 degree increments for seamless appearance */}
+          {Array.from({ length: 1440 }, (_, i) => i * 0.25).map((angle) => (
             <path
               key={`outer-${angle}`}
               d={createSectionPath(
@@ -501,32 +641,43 @@ const ColorWheelInfographic: React.FC = () => {
                 outerRingInnerRadius,
                 outerRingOuterRadius,
                 angle,
-                angle + 1,
+                angle + 0.25,
               )}
               fill={getColorWheelColor(angle)}
-              opacity={0.8}
+              opacity={0.9}
+              stroke="none"
             />
           ))}
 
           {outerLabels.map((label) => {
             return (
-              <text
-                key={label.id}
-                className="fill-gray-700 text-sm font-bold cursor-pointer"
-                style={{ fontStyle: "italic" }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleLabelClick(label.id);
-                }}
-              >
-                <textPath
-                  href={`#textPath-${label.id}`}
-                  startOffset="50%"
-                  textAnchor="middle"
+              <g key={label.id}>
+                {/* Text with white stroke outline */}
+                <text
+                  fill="#4b5563"
+                  fontSize="14"
+                  fontWeight="800"
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                  fontStyle="italic"
+                  stroke="white"
+                  strokeWidth="3"
+                  strokeLinejoin="round"
+                  paintOrder="stroke fill"
+                  style={{ cursor: "pointer" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLabelClick(label.id);
+                  }}
                 >
-                  {label.text}
-                </textPath>
-              </text>
+                  <textPath
+                    href={`#textPath-${label.id}`}
+                    startOffset="50%"
+                    textAnchor="middle"
+                  >
+                    {label.text}
+                  </textPath>
+                </text>
+              </g>
             );
           })}
 
@@ -564,7 +715,11 @@ const ColorWheelInfographic: React.FC = () => {
                   onClick={(e) => handleMiddleSectionClick(e, section.id)}
                 />
                 <text 
-                  className="fill-gray-700 text-xs font-semibold pointer-events-none"
+                  fill="#374151"
+                  fontSize="12"
+                  fontWeight="600"
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                  pointerEvents="none"
                   onClick={(e) => handleMiddleSectionClick(e, section.id)}
                 >
                   <textPath
@@ -602,6 +757,7 @@ const ColorWheelInfographic: React.FC = () => {
                 onMouseDown={(e) => handleBubbleMouseDown(e, bubble.id)}
                 onClick={(e) => handleBubbleClick(e, bubble.id)}
               >
+                {/* Main bubble rectangle */}
                 <rect
                   x={pos.x - rectWidth / 2}
                   y={pos.y - rectHeight / 2}
@@ -611,9 +767,25 @@ const ColorWheelInfographic: React.FC = () => {
                   ry={borderRadius}
                   fill={bubble.color}
                   opacity={0.6}
-                  stroke={isSelected ? "#3b82f6" : "white"}
-                  strokeWidth={isSelected ? "3" : "2"}
+                  stroke={bubble.outlined ? "#4a5568" : "white"}
+                  strokeWidth={bubble.outlined ? "4" : "2"}
                 />
+                {/* Selection indicator - outer glow */}
+                {isSelected && (
+                  <rect
+                    x={pos.x - rectWidth / 2 - 3}
+                    y={pos.y - rectHeight / 2 - 3}
+                    width={rectWidth + 6}
+                    height={rectHeight + 6}
+                    rx={borderRadius + 2}
+                    ry={borderRadius + 2}
+                    fill="none"
+                    stroke="#3b82f6"
+                    strokeWidth="2"
+                    strokeDasharray="5,5"
+                    opacity={0.8}
+                  />
+                )}
                 {lines.map((line, index) => (
                   <text
                     key={index}
@@ -621,7 +793,11 @@ const ColorWheelInfographic: React.FC = () => {
                     y={pos.y - (lines.length - 1) * lineHeight / 2 + index * lineHeight}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    className="fill-gray-800 text-xs font-medium pointer-events-none"
+                    fill="#1f2937"
+                    fontSize="12"
+                    fontWeight="500"
+                    fontFamily="system-ui, -apple-system, sans-serif"
+                    pointerEvents="none"
                   >
                     {line}
                   </text>
@@ -661,7 +837,11 @@ const ColorWheelInfographic: React.FC = () => {
                   y={textPos.y}
                   textAnchor="middle"
                   dominantBaseline="middle"
-                  className="fill-white text-[10px] font-bold cursor-pointer"
+                  fill="#ffffff"
+                  fontSize="10"
+                  fontWeight="700"
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                  style={{ cursor: "pointer" }}
                   onClick={(e) => handleInnerSectionClick(e, section.id)}
                 >
                   {section.text}
@@ -673,12 +853,32 @@ const ColorWheelInfographic: React.FC = () => {
           <circle cx={centerX} cy={centerY} r={3} fill="white" />
         </svg>
 
-        <button
-          onClick={exportToPng}
-          className="mt-4 bg-green-500 text-white px-6 py-3 rounded-md hover:bg-green-600 transition-colors font-semibold"
-        >
-          Export as PNG
-        </button>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={exportToPng}
+            className="bg-green-500 text-white px-6 py-3 rounded-md hover:bg-green-600 transition-colors font-semibold"
+          >
+            Export as PNG
+          </button>
+          <button
+            onClick={exportToSvg}
+            className="bg-teal-500 text-white px-6 py-3 rounded-md hover:bg-teal-600 transition-colors font-semibold"
+          >
+            Export as SVG
+          </button>
+          <button
+            onClick={saveProjectToFile}
+            className="bg-blue-500 text-white px-6 py-3 rounded-md hover:bg-blue-600 transition-colors font-semibold"
+          >
+            Save Project
+          </button>
+          <button
+            onClick={loadProjectFromFile}
+            className="bg-orange-500 text-white px-6 py-3 rounded-md hover:bg-orange-600 transition-colors font-semibold"
+          >
+            Load Project
+          </button>
+        </div>
       </div>
 
       {/* Edit Panel */}
@@ -698,8 +898,22 @@ const ColorWheelInfographic: React.FC = () => {
                 rows={3}
                 placeholder="Enter bubble text..."
               />
-              <p className="text-xs text-gray-500 mt-1">Max 20 characters per line (auto-wraps)</p>
+              <p className="text-xs text-gray-500 mt-1">Max 20 characters per line (auto-wraps). Press Enter for new lines.</p>
             </div>
+            
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="outlineCheckbox"
+                checked={bubbles.find(b => b.id === selectedBubbleId)?.outlined || false}
+                onChange={toggleBubbleOutline}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+              />
+              <label htmlFor="outlineCheckbox" className="text-sm font-medium text-gray-700 cursor-pointer">
+                Add outline (darker border)
+              </label>
+            </div>
+
             <div className="flex gap-2">
               <button
                 onClick={updateBubbleText}
@@ -832,12 +1046,15 @@ const ColorWheelInfographic: React.FC = () => {
           <div className="text-sm text-gray-600 space-y-3">
             <p><strong>Instructions:</strong></p>
             <ul className="list-disc list-inside space-y-1">
-              <li>Click in the white zone to add bubbles</li>
+              <li>Double-click in the white zone to add bubbles</li>
               <li>Click and drag bubbles to move them</li>
               <li>Click bubbles to edit text (auto-wraps at 20 chars)</li>
+              <li>Press Enter for new lines in bubble text</li>
               <li>Click outer labels to edit names</li>
               <li>Click center categories to edit</li>
               <li>Click middle sections to edit</li>
+              <li>Use Save Project to download your work as a .json file</li>
+              <li>Use Load Project to upload and continue a saved project</li>
               <li>Export as PNG when finished</li>
             </ul>
           </div>
