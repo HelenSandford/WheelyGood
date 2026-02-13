@@ -1,0 +1,850 @@
+import React, { useState, useRef } from "react";
+
+interface BubbleData {
+  id: string;
+  text: string;
+  angle: number;
+  distance: number;
+  color: string;
+}
+
+const ColorWheelInfographic: React.FC = () => {
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const [innerSections, setInnerSections] = useState([
+    { id: "1", text: "Category 1", color: "#FFB3BA" },
+    { id: "2", text: "Category 2", color: "#FFDFBA" },
+    { id: "3", text: "Category 3", color: "#BAFFC9" },
+    { id: "4", text: "Category 4", color: "#BAE1FF" },
+    { id: "5", text: "Category 5", color: "#E0BBE4" },
+  ]);
+
+  const [middleSections, setMiddleSections] = useState([
+    { id: "1", text: "Middle 1", angle: 0, span: 72 },
+    { id: "2", text: "Middle 2", angle: 72, span: 144 },
+    { id: "3", text: "Middle 3", angle: 216, span: 144 },
+  ]);
+
+  const [bubbles, setBubbles] = useState<BubbleData[]>([
+    {
+      id: "1",
+      text: "Bubble 1",
+      angle: 45,
+      distance: 180,
+      color: "#FFB6C1",
+    },
+    {
+      id: "2",
+      text: "Bubble 2",
+      angle: 135,
+      distance: 200,
+      color: "#B6E5FF",
+    },
+    {
+      id: "3",
+      text: "Bubble 3",
+      angle: 225,
+      distance: 190,
+      color: "#C1FFC1",
+    },
+    {
+      id: "4",
+      text: "Bubble 4",
+      angle: 315,
+      distance: 195,
+      color: "#FFDAB6",
+    },
+  ]);
+
+  const [outerLabels, setOuterLabels] = useState([
+    { id: "1", text: "Red Category", angle: 30 },
+    { id: "2", text: "Orange Category", angle: 90 },
+    { id: "3", text: "Yellow Category", angle: 150 },
+    { id: "4", text: "Green Category", angle: 210 },
+    { id: "5", text: "Blue Category", angle: 270 },
+    { id: "6", text: "Purple Category", angle: 330 },
+  ]);
+
+  const [nextBubbleId, setNextBubbleId] = useState(5);
+  const [selectedBubbleId, setSelectedBubbleId] = useState<string | null>(null);
+  const [selectedLabelId, setSelectedLabelId] = useState<string | null>(null);
+  const [selectedInnerSectionId, setSelectedInnerSectionId] = useState<string | null>(null);
+  const [selectedMiddleSectionId, setSelectedMiddleSectionId] = useState<string | null>(null);
+  const [draggingBubbleId, setDraggingBubbleId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+
+  const centerX = 400;
+  const centerY = 400;
+  const innerRadius = 80;
+  const middleInnerRadius = 80;
+  const middleOuterRadius = 115;
+  const bubbleZoneRadius = 300;
+  const outerRingInnerRadius = 320;
+  const outerRingOuterRadius = 380;
+
+  const getColorWheelColor = (angle: number): string => {
+    // Shifted 40 degrees clockwise total (20 + 20)
+    let hue = (angle - 40 + 360) % 360;
+    let saturation = 85;
+    let lightness = 55;
+
+    if (hue >= 0 && hue < 30) {
+      saturation = 90;
+      lightness = 50;
+    } else if (hue >= 30 && hue < 60) {
+      saturation = 95;
+      lightness = 55;
+    } else if (hue >= 60 && hue < 90) {
+      saturation = 90;
+      lightness = 60;
+    } else if (hue >= 90 && hue < 150) {
+      saturation = 80;
+      lightness = 50;
+    } else if (hue >= 150 && hue < 210) {
+      saturation = 75;
+      lightness = 45;
+    } else if (hue >= 210 && hue < 270) {
+      saturation = 70;
+      lightness = 50;
+    } else if (hue >= 270 && hue < 330) {
+      saturation = 80;
+      lightness = 55;
+    } else {
+      saturation = 85;
+      lightness = 52;
+    }
+
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  };
+
+  const getPastelColorWheelColor = (angle: number): string => {
+    let hue = (angle - 40 + 360) % 360;
+    let saturation = 50;
+    let lightness = 75;
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  };
+
+  const getVibrantColorWheelColor = (angle: number): string => {
+    let hue = (angle - 40 + 360) % 360;
+    let saturation = 85;
+    let lightness = 55;
+
+    if (hue >= 0 && hue < 30) {
+      saturation = 90;
+      lightness = 50;
+    } else if (hue >= 30 && hue < 60) {
+      saturation = 95;
+      lightness = 55;
+    } else if (hue >= 60 && hue < 90) {
+      saturation = 90;
+      lightness = 60;
+    } else if (hue >= 90 && hue < 150) {
+      saturation = 80;
+      lightness = 50;
+    } else if (hue >= 150 && hue < 210) {
+      saturation = 75;
+      lightness = 45;
+    } else if (hue >= 210 && hue < 270) {
+      saturation = 70;
+      lightness = 50;
+    } else if (hue >= 270 && hue < 330) {
+      saturation = 80;
+      lightness = 55;
+    } else {
+      saturation = 85;
+      lightness = 52;
+    }
+
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  };
+
+  const createSectionPath = (
+    centerX: number,
+    centerY: number,
+    innerRadius: number,
+    outerRadius: number,
+    startAngle: number,
+    endAngle: number,
+  ): string => {
+    const startAngleRad = (startAngle - 90) * (Math.PI / 180);
+    const endAngleRad = (endAngle - 90) * (Math.PI / 180);
+
+    const x1 = centerX + innerRadius * Math.cos(startAngleRad);
+    const y1 = centerY + innerRadius * Math.sin(startAngleRad);
+    const x2 = centerX + outerRadius * Math.cos(startAngleRad);
+    const y2 = centerY + outerRadius * Math.sin(startAngleRad);
+    const x3 = centerX + outerRadius * Math.cos(endAngleRad);
+    const y3 = centerY + outerRadius * Math.sin(endAngleRad);
+    const x4 = centerX + innerRadius * Math.cos(endAngleRad);
+    const y4 = centerY + innerRadius * Math.sin(endAngleRad);
+
+    const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+
+    return `
+      M ${x1} ${y1}
+      L ${x2} ${y2}
+      A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x3} ${y3}
+      L ${x4} ${y4}
+      A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x1} ${y1}
+      Z
+    `;
+  };
+
+  const polarToCartesian = (angle: number, radius: number) => {
+    const angleRad = (angle - 90) * (Math.PI / 180);
+    return {
+      x: centerX + radius * Math.cos(angleRad),
+      y: centerY + radius * Math.sin(angleRad),
+    };
+  };
+
+  const cartesianToPolar = (x: number, y: number) => {
+    const dx = x - centerX;
+    const dy = y - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    let angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+    if (angle < 0) angle += 360;
+    return { angle, distance };
+  };
+
+  // Wrap text to max 20 characters per line
+  const wrapText = (text: string, maxChars: number = 20): string[] => {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      if (testLine.length <= maxChars) {
+        currentLine = testLine;
+      } else {
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+        currentLine = word;
+      }
+    }
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+
+    return lines;
+  };
+
+  const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (draggingBubbleId) return;
+    
+    const svg = e.currentTarget;
+    const rect = svg.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 800;
+    const y = ((e.clientY - rect.top) / rect.height) * 800;
+
+    const dx = x - centerX;
+    const dy = y - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance > middleOuterRadius && distance < outerRingInnerRadius) {
+      let angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+      if (angle < 0) angle += 360;
+
+      const color = getPastelColorWheelColor(angle);
+
+      const newBubble: BubbleData = {
+        id: String(nextBubbleId),
+        text: `Bubble ${nextBubbleId}`,
+        angle: angle,
+        distance: distance,
+        color: color,
+      };
+
+      setBubbles([...bubbles, newBubble]);
+      setNextBubbleId(nextBubbleId + 1);
+    }
+  };
+
+  const handleBubbleMouseDown = (e: React.MouseEvent, bubbleId: string) => {
+    e.stopPropagation();
+    setDraggingBubbleId(bubbleId);
+  };
+
+  const handleBubbleClick = (e: React.MouseEvent, bubbleId: string) => {
+    e.stopPropagation();
+    if (draggingBubbleId) return;
+    
+    setSelectedBubbleId(bubbleId);
+    setSelectedLabelId(null);
+    setSelectedInnerSectionId(null);
+    setSelectedMiddleSectionId(null);
+    const bubble = bubbles.find(b => b.id === bubbleId);
+    if (bubble) {
+      setEditText(bubble.text);
+    }
+  };
+
+  const handleSvgMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!draggingBubbleId) return;
+
+    const svg = e.currentTarget;
+    const rect = svg.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 800;
+    const y = ((e.clientY - rect.top) / rect.height) * 800;
+
+    const { angle, distance } = cartesianToPolar(x, y);
+
+    const constrainedDistance = Math.max(
+      middleOuterRadius + 20,
+      Math.min(outerRingInnerRadius - 20, distance)
+    );
+
+    const color = getPastelColorWheelColor(angle);
+
+    setBubbles(bubbles.map(b =>
+      b.id === draggingBubbleId
+        ? { ...b, angle, distance: constrainedDistance, color }
+        : b
+    ));
+  };
+
+  const handleSvgMouseUp = () => {
+    setDraggingBubbleId(null);
+  };
+
+  const updateBubbleText = () => {
+    if (selectedBubbleId && editText.trim()) {
+      setBubbles(bubbles.map(b =>
+        b.id === selectedBubbleId ? { ...b, text: editText } : b
+      ));
+      setSelectedBubbleId(null);
+      setEditText("");
+    }
+  };
+
+  const updateLabelText = () => {
+    if (selectedLabelId && editText.trim()) {
+      setOuterLabels(outerLabels.map(l =>
+        l.id === selectedLabelId ? { ...l, text: editText } : l
+      ));
+      setSelectedLabelId(null);
+      setEditText("");
+    }
+  };
+
+  const updateInnerSectionText = () => {
+    if (selectedInnerSectionId && editText.trim()) {
+      setInnerSections(innerSections.map(s =>
+        s.id === selectedInnerSectionId ? { ...s, text: editText } : s
+      ));
+      setSelectedInnerSectionId(null);
+      setEditText("");
+    }
+  };
+
+  const updateMiddleSectionText = () => {
+    if (selectedMiddleSectionId && editText.trim()) {
+      setMiddleSections(middleSections.map(s =>
+        s.id === selectedMiddleSectionId ? { ...s, text: editText } : s
+      ));
+      setSelectedMiddleSectionId(null);
+      setEditText("");
+    }
+  };
+
+  const handleLabelClick = (labelId: string) => {
+    setSelectedLabelId(labelId);
+    setSelectedBubbleId(null);
+    setSelectedInnerSectionId(null);
+    setSelectedMiddleSectionId(null);
+    const label = outerLabels.find(l => l.id === labelId);
+    if (label) {
+      setEditText(label.text);
+    }
+  };
+
+  const handleInnerSectionClick = (e: React.MouseEvent, sectionId: string) => {
+    e.stopPropagation();
+    setSelectedInnerSectionId(sectionId);
+    setSelectedBubbleId(null);
+    setSelectedLabelId(null);
+    setSelectedMiddleSectionId(null);
+    const section = innerSections.find(s => s.id === sectionId);
+    if (section) {
+      setEditText(section.text);
+    }
+  };
+
+  const handleMiddleSectionClick = (e: React.MouseEvent, sectionId: string) => {
+    e.stopPropagation();
+    setSelectedMiddleSectionId(sectionId);
+    setSelectedBubbleId(null);
+    setSelectedLabelId(null);
+    setSelectedInnerSectionId(null);
+    const section = middleSections.find(s => s.id === sectionId);
+    if (section) {
+      setEditText(section.text);
+    }
+  };
+
+  const deleteBubble = () => {
+    if (selectedBubbleId) {
+      setBubbles(bubbles.filter(b => b.id !== selectedBubbleId));
+      setSelectedBubbleId(null);
+      setEditText("");
+    }
+  };
+
+  const exportToPng = async () => {
+    if (!svgRef.current) return;
+
+    const svgElement = svgRef.current;
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+
+    canvas.width = 800;
+    canvas.height = 800;
+
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+
+    img.onload = () => {
+      ctx?.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const pngUrl = URL.createObjectURL(blob);
+          const downloadLink = document.createElement("a");
+          downloadLink.href = pngUrl;
+          downloadLink.download = "color-wheel-infographic.png";
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
+          URL.revokeObjectURL(pngUrl);
+        }
+      });
+    };
+
+    img.src = url;
+  };
+
+  return (
+    <div className="w-full h-full flex items-center justify-center bg-gray-50 p-8 gap-8">
+      <div className="flex flex-col items-center">
+        <h1 className="text-3xl mb-8">Color Wheel Infographic</h1>
+
+        <svg
+          ref={svgRef}
+          width="800"
+          height="800"
+          viewBox="0 0 800 800"
+          className="max-w-full"
+          style={{ cursor: draggingBubbleId ? "grabbing" : "crosshair" }}
+          onClick={handleSvgClick}
+          onMouseMove={handleSvgMouseMove}
+          onMouseUp={handleSvgMouseUp}
+          onMouseLeave={handleSvgMouseUp}
+        >
+          <defs>
+            <radialGradient id="outerGradient">
+              <stop offset="0%" stopColor="white" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="white" stopOpacity="0" />
+            </radialGradient>
+
+            {outerLabels.map((label) => {
+              const textRadius = (outerRingInnerRadius + outerRingOuterRadius) / 2;
+              const pathId = `textPath-${label.id}`;
+              return (
+                <path
+                  key={pathId}
+                  id={pathId}
+                  d={`
+                    M ${centerX + textRadius * Math.cos(((label.angle - 90) * Math.PI) / 180)} 
+                      ${centerY + textRadius * Math.sin(((label.angle - 90) * Math.PI) / 180)}
+                    A ${textRadius} ${textRadius} 0 0 1 
+                      ${centerX + textRadius * Math.cos(((label.angle - 60) * Math.PI) / 180)} 
+                      ${centerY + textRadius * Math.sin(((label.angle - 60) * Math.PI) / 180)}
+                  `}
+                  fill="none"
+                />
+              );
+            })}
+
+            {middleSections.map((section) => {
+              const textRadius = (middleInnerRadius + middleOuterRadius) / 2;
+              const pathId = `middleTextPath-${section.id}`;
+              const startAngle = section.angle;
+              const endAngle = section.angle + section.span;
+              return (
+                <path
+                  key={pathId}
+                  id={pathId}
+                  d={`
+                    M ${centerX + textRadius * Math.cos(((startAngle - 90) * Math.PI) / 180)} 
+                      ${centerY + textRadius * Math.sin(((startAngle - 90) * Math.PI) / 180)}
+                    A ${textRadius} ${textRadius} 0 ${section.span > 180 ? 1 : 0} 1 
+                      ${centerX + textRadius * Math.cos(((endAngle - 90) * Math.PI) / 180)} 
+                      ${centerY + textRadius * Math.sin(((endAngle - 90) * Math.PI) / 180)}
+                  `}
+                  fill="none"
+                />
+              );
+            })}
+          </defs>
+
+          {Array.from({ length: 360 }, (_, i) => i).map((angle) => (
+            <path
+              key={`outer-${angle}`}
+              d={createSectionPath(
+                centerX,
+                centerY,
+                outerRingInnerRadius,
+                outerRingOuterRadius,
+                angle,
+                angle + 1,
+              )}
+              fill={getColorWheelColor(angle)}
+              opacity={0.8}
+            />
+          ))}
+
+          {outerLabels.map((label) => {
+            return (
+              <text
+                key={label.id}
+                className="fill-gray-700 text-sm font-bold cursor-pointer"
+                style={{ fontStyle: "italic" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLabelClick(label.id);
+                }}
+              >
+                <textPath
+                  href={`#textPath-${label.id}`}
+                  startOffset="50%"
+                  textAnchor="middle"
+                >
+                  {label.text}
+                </textPath>
+              </text>
+            );
+          })}
+
+          <circle
+            cx={centerX}
+            cy={centerY}
+            r={bubbleZoneRadius}
+            fill="white"
+            opacity={0.9}
+          />
+
+          {middleSections.map((section) => {
+            const startAngle = section.angle;
+            const endAngle = section.angle + section.span;
+            const midAngle = section.angle + section.span / 2;
+            const color = getPastelColorWheelColor(midAngle);
+            const isSelected = selectedMiddleSectionId === section.id;
+
+            return (
+              <g key={section.id}>
+                <path
+                  d={createSectionPath(
+                    centerX,
+                    centerY,
+                    middleInnerRadius,
+                    middleOuterRadius,
+                    startAngle,
+                    endAngle,
+                  )}
+                  fill={color}
+                  opacity={0.7}
+                  stroke={isSelected ? "#3b82f6" : "white"}
+                  strokeWidth={isSelected ? "3" : "2"}
+                  className="cursor-pointer"
+                  onClick={(e) => handleMiddleSectionClick(e, section.id)}
+                />
+                <text 
+                  className="fill-gray-700 text-xs font-semibold pointer-events-none"
+                  onClick={(e) => handleMiddleSectionClick(e, section.id)}
+                >
+                  <textPath
+                    href={`#middleTextPath-${section.id}`}
+                    startOffset="50%"
+                    textAnchor="middle"
+                  >
+                    {section.text}
+                  </textPath>
+                </text>
+              </g>
+            );
+          })}
+
+          {bubbles.map((bubble) => {
+            const pos = polarToCartesian(bubble.angle, bubble.distance);
+            const lines = wrapText(bubble.text, 20);
+            const padding = 16;
+            const lineHeight = 14;
+            const charWidth = 7;
+            
+            // Calculate width based on longest line
+            const maxLineLength = Math.max(...lines.map(l => l.length));
+            const textWidth = maxLineLength * charWidth;
+            const rectWidth = Math.max(textWidth + padding * 2, 60);
+            const rectHeight = Math.max(lines.length * lineHeight + padding, 30);
+            const borderRadius = 8;
+            const isSelected = selectedBubbleId === bubble.id;
+            const isDragging = draggingBubbleId === bubble.id;
+
+            return (
+              <g
+                key={bubble.id}
+                style={{ cursor: isDragging ? "grabbing" : "grab" }}
+                onMouseDown={(e) => handleBubbleMouseDown(e, bubble.id)}
+                onClick={(e) => handleBubbleClick(e, bubble.id)}
+              >
+                <rect
+                  x={pos.x - rectWidth / 2}
+                  y={pos.y - rectHeight / 2}
+                  width={rectWidth}
+                  height={rectHeight}
+                  rx={borderRadius}
+                  ry={borderRadius}
+                  fill={bubble.color}
+                  opacity={0.6}
+                  stroke={isSelected ? "#3b82f6" : "white"}
+                  strokeWidth={isSelected ? "3" : "2"}
+                />
+                {lines.map((line, index) => (
+                  <text
+                    key={index}
+                    x={pos.x}
+                    y={pos.y - (lines.length - 1) * lineHeight / 2 + index * lineHeight}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    className="fill-gray-800 text-xs font-medium pointer-events-none"
+                  >
+                    {line}
+                  </text>
+                ))}
+              </g>
+            );
+          })}
+
+          {innerSections.map((section, index) => {
+            const sectionAngle = 360 / innerSections.length;
+            const startAngle = index * sectionAngle;
+            const endAngle = (index + 1) * sectionAngle;
+            const midAngle = startAngle + sectionAngle / 2;
+            const textPos = polarToCartesian(midAngle, innerRadius * 0.55);
+            const vibrantColor = getVibrantColorWheelColor(midAngle);
+            const isSelected = selectedInnerSectionId === section.id;
+
+            return (
+              <g key={section.id}>
+                <path
+                  d={createSectionPath(
+                    centerX,
+                    centerY,
+                    0,
+                    innerRadius,
+                    startAngle,
+                    endAngle,
+                  )}
+                  fill={vibrantColor}
+                  stroke={isSelected ? "#3b82f6" : "white"}
+                  strokeWidth={isSelected ? "3" : "2"}
+                  className="cursor-pointer"
+                  onClick={(e) => handleInnerSectionClick(e, section.id)}
+                />
+                <text
+                  x={textPos.x}
+                  y={textPos.y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  className="fill-white text-[10px] font-bold cursor-pointer"
+                  onClick={(e) => handleInnerSectionClick(e, section.id)}
+                >
+                  {section.text}
+                </text>
+              </g>
+            );
+          })}
+
+          <circle cx={centerX} cy={centerY} r={3} fill="white" />
+        </svg>
+
+        <button
+          onClick={exportToPng}
+          className="mt-4 bg-green-500 text-white px-6 py-3 rounded-md hover:bg-green-600 transition-colors font-semibold"
+        >
+          Export as PNG
+        </button>
+      </div>
+
+      {/* Edit Panel */}
+      <div className="w-80 bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-xl font-bold mb-4">Edit Content</h2>
+        
+        {selectedBubbleId && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Edit Bubble Text
+              </label>
+              <textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={3}
+                placeholder="Enter bubble text..."
+              />
+              <p className="text-xs text-gray-500 mt-1">Max 20 characters per line (auto-wraps)</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={updateBubbleText}
+                className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
+              >
+                Update
+              </button>
+              <button
+                onClick={deleteBubble}
+                className="flex-1 bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+            <button
+              onClick={() => {
+                setSelectedBubbleId(null);
+                setEditText("");
+              }}
+              className="w-full bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {selectedLabelId && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Edit Outer Label
+              </label>
+              <input
+                type="text"
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter label text..."
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={updateLabelText}
+                className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
+              >
+                Update
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedLabelId(null);
+                  setEditText("");
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {selectedInnerSectionId && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Edit Center Category
+              </label>
+              <input
+                type="text"
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter category name..."
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={updateInnerSectionText}
+                className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
+              >
+                Update
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedInnerSectionId(null);
+                  setEditText("");
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {selectedMiddleSectionId && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Edit Middle Section
+              </label>
+              <input
+                type="text"
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter section name..."
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={updateMiddleSectionText}
+                className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
+              >
+                Update
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedMiddleSectionId(null);
+                  setEditText("");
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!selectedBubbleId && !selectedLabelId && !selectedInnerSectionId && !selectedMiddleSectionId && (
+          <div className="text-sm text-gray-600 space-y-3">
+            <p><strong>Instructions:</strong></p>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Click in the white zone to add bubbles</li>
+              <li>Click and drag bubbles to move them</li>
+              <li>Click bubbles to edit text (auto-wraps at 20 chars)</li>
+              <li>Click outer labels to edit names</li>
+              <li>Click center categories to edit</li>
+              <li>Click middle sections to edit</li>
+              <li>Export as PNG when finished</li>
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ColorWheelInfographic;
